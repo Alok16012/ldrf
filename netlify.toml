@@ -1,0 +1,5 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+# Set SUPABASE_URL and SUPABASE_ANON_KEY in Netlify → Site configuration → Environment variables.

@@ -1,0 +1,8 @@
+# Local build / Netlify state
+dist/
+.netlify/
+.DS_Store
+
+# Raw source images (cropped versions live in assets/img)
+src/
+assets/letterhead.png
