@@ -140,3 +140,40 @@ select * from (values
   ('video','/assets/video/calligraphy-tailoring.mp4','/assets/video/calligraphy-tailoring.jpg','Calligraphy & Tailoring',30)
 ) v(kind,url,poster,caption,sort)
 where not exists (select 1 from public.ldrf_gallery);
+
+-- ================= Courses / programmes managed from the admin panel =================
+create table if not exists public.ldrf_courses (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  name text not null unique check (char_length(name) between 2 and 80),
+  image_url text,
+  image_path text,                 -- storage path when uploaded from admin
+  badge text check (badge is null or char_length(badge) <= 30),          -- e.g. ADMISSIONS OPEN
+  highlight text check (highlight is null or char_length(highlight) <= 40), -- e.g. 3 Levels
+  includes text check (includes is null or char_length(includes) <= 400),
+  tag text check (tag is null or char_length(tag) <= 40),                -- e.g. Job Oriented
+  subtitle text check (subtitle is null or char_length(subtitle) <= 60),
+  footer text check (footer is null or char_length(footer) <= 60),       -- e.g. Certificate Provided
+  sort int not null default 0,
+  active boolean not null default true
+);
+alter table public.ldrf_courses enable row level security;
+drop policy if exists "public read active courses" on public.ldrf_courses;
+create policy "public read active courses" on public.ldrf_courses for select to anon, authenticated using (active or public.ldrf_is_admin());
+drop policy if exists "admins manage courses" on public.ldrf_courses;
+create policy "admins manage courses" on public.ldrf_courses for all to authenticated using (public.ldrf_is_admin()) with check (public.ldrf_is_admin());
+grant select on public.ldrf_courses to anon;
+grant select, insert, update, delete on public.ldrf_courses to authenticated;
+
+-- Seed once with the courses already on the website (keeping any custom photos set earlier)
+insert into public.ldrf_courses (name, image_url, image_path, badge, highlight, includes, tag, subtitle, footer, sort)
+select v.name, coalesce(ci.url, v.img), ci.path, v.badge, v.highlight, v.includes, v.tag, v.subtitle, v.footer, v.sort
+from (values
+  ('Calligraphy & Graphic Design','/assets/img/calli-class-2.jpg','ADMISSIONS OPEN','3 Levels','Basic (letter forms, handwriting), Foundation (typography, composition, digital & traditional graphics) and Advanced (scripts, flourishing, graphic design integration, portfolio)','Creative Career','Urdu Calligraphy • Session 2026','Certificate Provided',10),
+  ('Mehndi Designing',null,'NEW BATCH','Course','Mehndi design patterns and application techniques for self-employment','Self-Employment','For Women','Certificate Provided',20),
+  ('Cutting & Tailoring','/assets/img/tailoring-class.jpg','FOR WOMEN','5 Modules','Cutting & Stitching, Dress Designing, Pattern Making, Fabric Knowledge & Measurement, Hand & Machine Stitching','Self-Reliance','Modern Machines & Equipment','Certificate Provided',30),
+  ('Computer Training','/assets/img/computer-lab.jpg','BASIC TO ADVANCED','Basic to Advanced','Computer Basics, Graphic Designing, Coding & Programming and computer applications for the modern workplace','Job Oriented','Practical Lab Training','Certificate Provided',40),
+  ('Tally Financial Accounting','/assets/img/tally-lab.jpg','100% JOB ORIENTED','Tally with GST','Accounting, Banking, Billing, Manufacturing, Inventory, TDS & TCS, Taxation (GST) and Payroll','Certified Professional','Complete Accounting & Taxation','Certificate Provided',50)
+) v(name,img,badge,highlight,includes,tag,subtitle,footer,sort)
+left join public.ldrf_course_images ci on ci.course = v.name
+where not exists (select 1 from public.ldrf_courses);

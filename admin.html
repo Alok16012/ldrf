@@ -244,6 +244,9 @@ tbody tr.sel-row{background:#f3f6fd}
 .crs .mrow .btn{flex:1;justify-content:center}
 .crs .mrow label.btn input{display:none}
 .busy{opacity:.5;pointer-events:none}
+.mcard.off .mthumb img{filter:grayscale(1);opacity:.6}
+.drawer .fld textarea{width:100%;border:1px solid #d9dce5;border-radius:10px;padding:10px 12px;outline:none;resize:vertical;line-height:1.5}
+.drawer .fld textarea:focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(26,54,114,.12)}
 
 /* toast */
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(16px);background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;font-size:13.5px;opacity:0;transition:.2s;z-index:90;display:flex;align-items:center;gap:8px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
@@ -305,7 +308,7 @@ tbody tr.sel-row{background:#f3f6fd}
       <button class="nav" data-p="con"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Contact Messages<span class="cnt" id="nCon"></span></button>
       <div class="sb-lbl">Website</div>
       <button class="nav" data-p="gal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>Gallery</button>
-      <button class="nav" data-p="crs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5V21h16"/></svg>Course Photos</button>
+      <button class="nav" data-p="crs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5V21h16"/></svg>Courses</button>
       <a class="nav" href="/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg>View Website</a>
     </nav>
     <div class="sb-foot">
@@ -423,7 +426,7 @@ async function enter(user){
 $('bOut').onclick=async()=>{await sb.auth.signOut();location.hash='';location.reload()};
 
 /* ================= NAV ================= */
-const TITLES={dash:['Overview','Dashboard'],enr:['Leads','Enrollments'],con:['Leads','Contact Messages'],gal:['Website','Gallery'],crs:['Website','Course Photos']};
+const TITLES={dash:['Overview','Dashboard'],enr:['Leads','Enrollments'],con:['Leads','Contact Messages'],gal:['Website','Gallery'],crs:['Website','Courses']};
 function go(p,skipRender){
   page=p;history.replaceState(null,'','#'+p);
   document.querySelectorAll('.nav[data-p]').forEach(n=>n.classList.toggle('on',n.dataset.p===p));
@@ -641,19 +644,13 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
 
 /* ================= MEDIA (Gallery + Course Photos) ================= */
 const BUCKET='ldrf-media';
-const COURSES=[
-  ['Calligraphy & Graphic Design','assets/img/calli-class-2.jpg'],
-  ['Mehndi Designing',''],
-  ['Cutting & Tailoring','assets/img/tailoring-class.jpg'],
-  ['Computer Training','assets/img/computer-lab.jpg'],
-  ['Tally Financial Accounting','assets/img/tally-lab.jpg'],
-];
+// Courses come from the ldrf_courses table (see supabase/schema.sql)
 let gal=[],crs=[],galKind='photo';
 const absUrl=u=>/^https?:/.test(u)?u:'/'+u.replace(/^\//,'');
 async function loadMedia(){
   const [a,b]=await Promise.all([
     sb.from('ldrf_gallery').select('*').order('sort',{ascending:true}).order('created_at',{ascending:true}),
-    sb.from('ldrf_course_images').select('*')
+    sb.from('ldrf_courses').select('*').order('sort',{ascending:true}).order('id',{ascending:true})
   ]);
   if(a.error||b.error){$('page').innerHTML=emptyBox('Could not load media',esc((a.error||b.error).message));return}
   gal=a.data;crs=b.data;
@@ -714,32 +711,78 @@ function renderMedia(){
     drop.addEventListener('drop',e=>{const dt=new DataTransfer();[...e.dataTransfer.files].forEach(f=>dt.items.add(f));$('gFile').files=dt.files;$('gFile').dispatchEvent(new Event('change',{bubbles:true}))});
     return;
   }
-  $('page').innerHTML=`<p style="color:var(--muted);margin-bottom:16px">Change the photo shown on each course card of the website. Use a landscape photo for best results.</p>
-    <div class="mgrid">${COURSES.map(([name,def])=>{
-      const o=crs.find(c=>c.course===name),src=o?o.url:def;
-      return `<div class="mcard crs" data-course="${esc(name)}">
-        <div class="mthumb">${src?`<img src="${esc(absUrl(src))}" alt="">`:`<div style="height:100%;display:grid;place-items:center;color:var(--champ-2);font-family:var(--serif);font-size:20px;padding:10px;text-align:center">${esc(name)}</div>`}<span class="tag">${o?'Custom':'Default'}</span></div>
-        <div class="mbody"><b>${esc(name)}</b><small>${o?'Updated '+ago(o.updated_at):'Using the default website photo'}</small>
+  const shown=crs.filter(c=>c.active).length;
+  $('page').innerHTML=`<div class="card"><div class="card-b" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px"><b style="font-size:15px">${crs.length} course${crs.length===1?'':'s'}</b><div style="color:var(--muted);font-size:13px;margin-top:2px">${shown} shown on the website · order here is the order on the website and in the enrol form</div></div>
+      <button class="btn pri" data-cadd>+ Add course</button></div></div>
+    ${crs.length?`<div class="mgrid">${crs.map((c,i)=>`
+      <div class="mcard crs ${c.active?'':'off'}" data-cid="${c.id}">
+        <div class="mthumb">${c.image_url?`<img src="${esc(absUrl(c.image_url))}" alt="" loading="lazy">`:`<div style="height:100%;display:grid;place-items:center;color:var(--champ-2);font-family:var(--serif);font-size:20px;padding:10px;text-align:center">${esc(c.name)}</div>`}
+          <span class="tag" style="${c.active?'':'background:#6b7280'}">${c.active?'Shown':'Hidden'}</span>${c.badge?`<span class="tag" style="left:auto;right:8px;background:rgba(216,184,113,.95);color:var(--ink)">${esc(c.badge)}</span>`:''}</div>
+        <div class="mbody"><b>${esc(c.name)}</b><small>${esc([c.highlight,c.tag].filter(Boolean).join(' · ')||'No details yet')}</small>
           <div class="mrow">
-            <label class="btn gold">${IC.up}Change<input type="file" data-cfile="${esc(name)}" accept="image/jpeg,image/png,image/webp"></label>
-            ${o?`<button class="btn" data-creset="${esc(name)}">Reset</button>`:''}
+            <button class="btn" data-cedit="${c.id}" style="flex:1;justify-content:center">Edit</button>
+            <button class="ib" data-cmv="-1" title="Move earlier" ${i===0?'disabled style="opacity:.4"':''}>${IC.l}</button>
+            <button class="ib" data-cmv="1" title="Move later" ${i===crs.length-1?'disabled style="opacity:.4"':''}>${IC.r}</button>
           </div>
-        </div></div>`}).join('')}</div>`;
+        </div></div>`).join('')}</div>`:emptyBox('No courses yet','Click “Add course” to create the first one.')}`;
+}
+function courseForm(c){
+  const v=c||{active:true};openRow={t:'crs',id:c?c.id:0};
+  const f=(id,label,val,ph,max,area)=>`<div class="fld"><label for="${id}">${label}</label>${area?`<textarea id="${id}" maxlength="${max}" placeholder="${ph}" style="min-height:90px">${esc(val||'')}</textarea>`:`<input id="${id}" maxlength="${max}" placeholder="${ph}" value="${esc(val||'')}">`}</div>`;
+  $('drawer').innerHTML=`
+    <div class="dw-h"><div><b>${c?'Edit course':'Add course'}</b><small>${c?esc(c.name):'New programme on the website'}</small></div><button class="ib x" id="dwX" aria-label="Close">${IC.x}</button></div>
+    <div class="dw-b">
+      <div class="fld"><label>Photo</label>
+        <div class="mthumb" id="cfPrev" style="border-radius:10px;overflow:hidden;margin-bottom:8px">${v.image_url?`<img src="${esc(absUrl(v.image_url))}" alt="">`:`<div style="height:100%;display:grid;place-items:center;color:var(--champ-2);font-size:13px">No photo</div>`}</div>
+        <label class="btn" style="cursor:pointer">${IC.up}Choose photo<input type="file" id="cfImg" accept="image/jpeg,image/png,image/webp" style="display:none"></label>
+        ${v.image_url?'<button class="btn" id="cfNoImg" type="button" style="margin-left:6px">Remove photo</button>':''}
+      </div>
+      ${f('cfName','Course name *',v.name,'e.g. Beautician Course',80)}
+      ${f('cfBadge','Badge on photo',v.badge,'e.g. ADMISSIONS OPEN',30)}
+      ${f('cfHi','Highlight',v.highlight,'e.g. 3 Months · 5 Modules',40)}
+      ${f('cfInc','What students learn',v.includes,'e.g. Skin care, Hair styling, Makeup…',400,true)}
+      ${f('cfTag','Main tag',v.tag,'e.g. Job Oriented',40)}
+      ${f('cfSub','Sub-line',v.subtitle,'e.g. For Women • Morning batch',60)}
+      ${f('cfFoot','Bottom line',v.footer,'e.g. Certificate Provided',60)}
+      <label style="display:flex;align-items:center;gap:10px;margin-top:6px;font-weight:500;cursor:pointer"><input type="checkbox" id="cfAct" ${v.active?'checked':''} style="width:18px;height:18px">Show on website</label>
+    </div>
+    <div class="dw-f">
+      ${c?`<button class="btn dng" id="cfDel">${IC.del}Delete</button>`:''}
+      <button class="btn pri" id="cfSave">${c?'Save changes':'Add course'}</button>
+    </div>`;
+  $('drawer').classList.add('on');$('drawer').setAttribute('aria-hidden','false');$('dwScrim').classList.add('on');
+  let newFile=null,dropImg=false;
+  $('dwX').onclick=closeDrawer;
+  $('cfImg').onchange=e=>{newFile=e.target.files[0]||null;dropImg=false;if(newFile)$('cfPrev').innerHTML=`<img src="${URL.createObjectURL(newFile)}" alt="">`};
+  if($('cfNoImg'))$('cfNoImg').onclick=()=>{dropImg=true;newFile=null;$('cfPrev').innerHTML='<div style="height:100%;display:grid;place-items:center;color:var(--champ-2);font-size:13px">No photo</div>'};
+  $('cfSave').onclick=async()=>{
+    const name=$('cfName').value.trim();if(name.length<2){toast('Enter a course name');$('cfName').focus();return}
+    if(crs.some(x=>x.name.toLowerCase()===name.toLowerCase()&&(!c||x.id!==c.id))){toast('A course with this name already exists');return}
+    const btn=$('cfSave');btn.classList.add('busy');btn.textContent='Saving…';
+    const row={name,badge:$('cfBadge').value.trim().toUpperCase()||null,highlight:$('cfHi').value.trim()||null,includes:$('cfInc').value.trim()||null,
+      tag:$('cfTag').value.trim()||null,subtitle:$('cfSub').value.trim()||null,footer:$('cfFoot').value.trim()||null,active:$('cfAct').checked};
+    let up=null;
+    try{
+      if(newFile){up=await uploadFile(newFile,'courses');row.image_url=up.url;row.image_path=up.path}
+      else if(dropImg){row.image_url=null;row.image_path=null}
+      if(!c)row.sort=Math.max(0,...crs.map(x=>x.sort))+10;
+      const {error}=c?await sb.from('ldrf_courses').update(row).eq('id',c.id):await sb.from('ldrf_courses').insert(row);
+      if(error)throw error;
+      if(c&&(newFile||dropImg))await removeObj(c.image_path);
+      closeDrawer();toast(c?'Course updated':'Course added');await loadMedia();
+    }catch(err){if(up)await removeObj(up.path);toast('Save failed: '+err.message);btn.classList.remove('busy');btn.textContent=c?'Save changes':'Add course'}
+  };
+  if($('cfDel'))$('cfDel').onclick=async()=>{
+    if(!confirm(`Delete the course “${c.name}”? It will be removed from the website. Existing enrollments are kept.`))return;
+    const {error}=await sb.from('ldrf_courses').delete().eq('id',c.id);
+    if(error){toast('Delete failed: '+error.message);return}
+    await removeObj(c.image_path);closeDrawer();toast('Course deleted');await loadMedia();
+  };
 }
 $('page').addEventListener('change',async e=>{
   if(e.target.id==='gFile'){const f=[...e.target.files];$('gPicked').textContent=f.length?`${f.length} file${f.length>1?'s':''} selected: `+f.map(x=>x.name).join(', '):'No files selected';return}
-  const cf=e.target.closest('[data-cfile]');
-  if(cf&&cf.files[0]){
-    const name=cf.dataset.cfile,card=cf.closest('.mcard');card.classList.add('busy');
-    try{
-      const up=await uploadFile(cf.files[0],'courses');
-      const old=crs.find(c=>c.course===name);
-      const {error}=await sb.from('ldrf_course_images').upsert({course:name,url:up.url,path:up.path,updated_at:new Date().toISOString()});
-      if(error){await removeObj(up.path);throw error}
-      if(old)await removeObj(old.path);
-      toast('Course photo updated');await loadMedia();
-    }catch(err){toast('Upload failed: '+err.message);card.classList.remove('busy')}
-  }
+  // (course photos are now edited inside the course form)
 });
 $('page').addEventListener('click',async e=>{
   if(page!=='gal'&&page!=='crs')return;
@@ -778,13 +821,15 @@ $('page').addEventListener('click',async e=>{
     const bad=res.find(r=>r.error);if(bad)toast('Reorder failed: '+bad.error.message);
     await loadMedia();return;
   }
-  const rs=e.target.closest('[data-creset]');
-  if(rs){
-    const o=crs.find(c=>c.course===rs.dataset.creset);if(!o)return;
-    if(!confirm('Reset this course to its default photo?'))return;
-    const {error}=await sb.from('ldrf_course_images').delete().eq('course',o.course);
-    if(error){toast('Reset failed: '+error.message);return}
-    await removeObj(o.path);toast('Reset to default');await loadMedia();
+  if(e.target.closest('[data-cadd]')){courseForm(null);return}
+  const ce=e.target.closest('[data-cedit]');if(ce){courseForm(crs.find(x=>x.id===+ce.dataset.cedit));return}
+  const cm=e.target.closest('[data-cmv]');
+  if(cm){
+    const id=+cm.closest('.mcard').dataset.cid,i=crs.findIndex(x=>x.id===id),j=i+(+cm.dataset.cmv);if(j<0||j>=crs.length)return;
+    crs.forEach((x,n)=>x.sort=(n+1)*10);[crs[i].sort,crs[j].sort]=[crs[j].sort,crs[i].sort];
+    const res=await Promise.all(crs.map(x=>sb.from('ldrf_courses').update({sort:x.sort}).eq('id',x.id)));
+    const bad=res.find(r=>r.error);if(bad)toast('Reorder failed: '+bad.error.message);
+    await loadMedia();
   }
 });
 $('page').addEventListener('focusout',async e=>{

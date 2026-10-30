@@ -593,7 +593,7 @@ body{color:#111827;font-variant-numeric:lining-nums}
       </div>
       <div class="art-mid">
         <div class="prog-box">
-          <div class="dark"><b>SKILL COURSES</b><span>(5 Job-Oriented Programmes)</span></div>
+          <div class="dark"><b>SKILL COURSES</b><span>(<span id="crsCount">5</span> Job-Oriented Programmes)</span></div>
           <div class="lite"><b>ADMISSIONS</b><span>OPEN • 2026</span></div>
         </div>
         <div class="partner">
@@ -631,7 +631,7 @@ body{color:#111827;font-variant-numeric:lining-nums}
           <div class="fld"><label for="fProg">Course / Membership</label>
             <select id="fProg">
               <option value="">Select Course or Membership</option>
-              <optgroup label="RGLM Skill Courses">
+              <optgroup label="RGLM Skill Courses" id="ogCourses">
                 <option>Calligraphy &amp; Graphic Design</option>
                 <option>Mehndi Designing</option>
                 <option>Cutting &amp; Tailoring</option>
@@ -891,32 +891,47 @@ async function save(table,row){
 
 /* ---------- Courses ---------- */
 const mehndiArt='<div class="mehndi"><svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="50" cy="50" r="8"/><circle cx="50" cy="50" r="16"/><circle cx="50" cy="50" r="30" stroke-dasharray="3 4"/>'+Array.from({length:12},(_,i)=>`<path transform="rotate(${i*30} 50 50)" d="M50 18c6 6 6 12 0 16c-6-4-6-10 0-16z"/>`).join('')+Array.from({length:24},(_,i)=>`<circle transform="rotate(${i*15} 50 50)" cx="50" cy="8" r="1.6"/>`).join('')+'</svg><span>Mehndi</span></div>';
-const C=[
- {n:'Calligraphy & Graphic Design',img:'assets/img/calli-class-2.jpg',pill:'ADMISSIONS OPEN',k:'3 Levels',i:'Basic (letter forms, handwriting), Foundation (typography, composition, digital & traditional graphics) and Advanced (scripts, flourishing, graphic design integration, portfolio)',t:'Creative Career',s:'Urdu Calligraphy • Session 2026',f:'Certificate Provided'},
- {n:'Mehndi Designing',art:mehndiArt,pill:'NEW BATCH',k:'Course',i:'Mehndi design patterns and application techniques for self-employment',t:'Self-Employment',s:'For Women',f:'Certificate Provided'},
- {n:'Cutting & Tailoring',img:'assets/img/tailoring-class.jpg',pill:'FOR WOMEN',k:'5 Modules',i:'Cutting & Stitching, Dress Designing, Pattern Making, Fabric Knowledge & Measurement, Hand & Machine Stitching',t:'Self-Reliance',s:'Modern Machines & Equipment',f:'Certificate Provided'},
- {n:'Computer Training',img:'assets/img/computer-lab.jpg',pill:'BASIC TO ADVANCED',k:'Basic to Advanced',i:'Computer Basics, Graphic Designing, Coding & Programming and computer applications for the modern workplace',t:'Job Oriented',s:'Practical Lab Training',f:'Certificate Provided'},
- {n:'Tally Financial Accounting',img:'assets/img/tally-lab.jpg',pill:'100% JOB ORIENTED',k:'Tally with GST',i:'Accounting, Banking, Billing, Manufacturing, Inventory, TDS & TCS, Taxation (GST) and Payroll',t:'Certified Professional',s:'Complete Accounting & Taxation',f:'Certificate Provided'},
+// Built-in courses (used until the admin-managed list loads from Supabase)
+let C=[
+ {name:'Calligraphy & Graphic Design',image_url:'assets/img/calli-class-2.jpg',badge:'ADMISSIONS OPEN',highlight:'3 Levels',includes:'Basic (letter forms, handwriting), Foundation (typography, composition, digital & traditional graphics) and Advanced (scripts, flourishing, graphic design integration, portfolio)',tag:'Creative Career',subtitle:'Urdu Calligraphy • Session 2026',footer:'Certificate Provided'},
+ {name:'Mehndi Designing',image_url:null,badge:'NEW BATCH',highlight:'Course',includes:'Mehndi design patterns and application techniques for self-employment',tag:'Self-Employment',subtitle:'For Women',footer:'Certificate Provided'},
+ {name:'Cutting & Tailoring',image_url:'assets/img/tailoring-class.jpg',badge:'FOR WOMEN',highlight:'5 Modules',includes:'Cutting & Stitching, Dress Designing, Pattern Making, Fabric Knowledge & Measurement, Hand & Machine Stitching',tag:'Self-Reliance',subtitle:'Modern Machines & Equipment',footer:'Certificate Provided'},
+ {name:'Computer Training',image_url:'assets/img/computer-lab.jpg',badge:'BASIC TO ADVANCED',highlight:'Basic to Advanced',includes:'Computer Basics, Graphic Designing, Coding & Programming and computer applications for the modern workplace',tag:'Job Oriented',subtitle:'Practical Lab Training',footer:'Certificate Provided'},
+ {name:'Tally Financial Accounting',image_url:'assets/img/tally-lab.jpg',badge:'100% JOB ORIENTED',highlight:'Tally with GST',includes:'Accounting, Banking, Billing, Manufacturing, Inventory, TDS & TCS, Taxation (GST) and Payroll',tag:'Certified Professional',subtitle:'Complete Accounting & Taxation',footer:'Certificate Provided'},
 ];
+const artFor=n=>/mehndi|henna/i.test(n)?mehndiArt:`<div class="mehndi"><span style="position:static;font-size:24px;text-align:center;padding:0 18px">${esc(n)}</span></div>`;
 const chev='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 18 6-6-6-6"/></svg>';
 const waI='<svg viewBox="0 0 32 32" fill="currentColor"><path d="M16.04 3C9.4 3 4 8.37 4 15c0 2.34.68 4.6 1.95 6.55L4 29l7.66-1.98A12.07 12.07 0 0 0 16.04 27C22.67 27 28 21.63 28 15S22.67 3 16.04 3zm5.38 14.47c-.3-.15-1.75-.86-2.02-.96-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.64.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.64-2.05-.17-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.6-.92-2.2-.24-.57-.48-.5-.67-.5h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.01-1.04 2.47s1.06 2.87 1.21 3.07c.15.2 2.09 3.19 5.06 4.47.71.31 1.26.49 1.69.62.71.23 1.36.2 1.87.12.57-.09 1.75-.72 2-1.41.25-.69.25-1.28.17-1.41-.07-.12-.27-.2-.57-.35z"/></svg>';
 const okI='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>';
-$('grid').innerHTML=C.map(p=>`
+function renderCourses(){
+  $('grid').innerHTML=C.map(p=>`
  <div class="card">
-  <div class="card-img" data-course="${esc(p.n)}">${p.img?`<img src="${p.img}" alt="${esc(p.n)} class at RGLM" loading="lazy">`:p.art}<span class="pill">${p.pill}</span></div>
-  <a href="#enrol" class="card-h" data-p="${esc(p.n)}"><h3>${esc(p.n)}</h3>${chev}</a>
+  <div class="card-img">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)} class at RGLM" loading="lazy">`:artFor(p.name)}${p.badge?`<span class="pill">${esc(p.badge)}</span>`:''}</div>
+  <a href="#enrol" class="card-h" data-p="${esc(p.name)}"><h3>${esc(p.name)}</h3>${chev}</a>
   <div class="card-b">
-   <div class="incl"><em>${esc(p.k)}</em>: Includes ${esc(p.i)}</div>
+   ${p.includes?`<div class="incl">${p.highlight?`<em>${esc(p.highlight)}</em>: `:''}Includes ${esc(p.includes)}</div>`:''}
    <div class="row">
-    <div class="tag"><b>${esc(p.t)}</b><span>${esc(p.s)}</span></div>
+    <div class="tag"><b>${esc(p.tag||'Skill Course')}</b>${p.subtitle?`<span>${esc(p.subtitle)}</span>`:''}</div>
     <div class="act">
-     <a class="lnk" href="${wa('Hello, I want details about the RGLM course: '+p.n)}" target="_blank" rel="noopener">${waI}Enquire</a>
-     <a href="#enrol" class="btn-book" data-p="${esc(p.n)}">Enrol Now</a>
+     <a class="lnk" href="${wa('Hello, I want details about the RGLM course: '+p.name)}" target="_blank" rel="noopener">${waI}Enquire</a>
+     <a href="#enrol" class="btn-book" data-p="${esc(p.name)}">Enrol Now</a>
     </div>
    </div>
   </div>
-  <div class="card-f">${okI}${p.f}</div>
+  ${p.footer?`<div class="card-f">${okI}${esc(p.footer)}</div>`:''}
  </div>`).join('');
+  $('ogCourses').innerHTML=C.map(p=>`<option>${esc(p.name)}</option>`).join('');
+  $('crsCount').textContent=C.length;
+}
+renderCourses();
+(async()=>{
+  try{
+    const c=await getCfg();if(!c.url||!c.anonKey)return;
+    const r=await fetch(`${c.url}/rest/v1/ldrf_courses?select=name,image_url,badge,highlight,includes,tag,subtitle,footer&active=eq.true&order=sort.asc,id.asc`,{headers:{apikey:c.anonKey,Authorization:`Bearer ${c.anonKey}`}});
+    if(!r.ok)return;const list=await r.json();
+    if(Array.isArray(list)&&list.length){const keep=$('fProg').value;C=list;renderCourses();if(keep)$('fProg').value=keep}
+  }catch(e){}
+})();
 
 // Any "data-p" link pre-selects the course/membership in the enrol form
 document.addEventListener('click',e=>{
@@ -994,19 +1009,11 @@ renderPhotos();
   try{
     const c=await getCfg();if(!c.url||!c.anonKey)return;
     const h={apikey:c.anonKey,Authorization:`Bearer ${c.anonKey}`};
-    const [gal,crs]=await Promise.all([
-      fetch(`${c.url}/rest/v1/ldrf_gallery?select=kind,url,poster,caption&order=sort.asc,created_at.asc`,{headers:h}).then(r=>r.ok?r.json():null),
-      fetch(`${c.url}/rest/v1/ldrf_course_images?select=course,url`,{headers:h}).then(r=>r.ok?r.json():null)
-    ]);
+    const gal=await fetch(`${c.url}/rest/v1/ldrf_gallery?select=kind,url,poster,caption&order=sort.asc,created_at.asc`,{headers:h}).then(r=>r.ok?r.json():null);
     if(gal){
       G=gal.filter(x=>x.kind==='photo');renderPhotos();
       renderVideos(gal.filter(x=>x.kind==='video'));
     }
-    (crs||[]).forEach(ci=>{
-      const box=document.querySelector(`.card-img[data-course="${CSS.escape(ci.course)}"]`);if(!box)return;
-      const pill=box.querySelector('.pill');
-      box.innerHTML=`<img src="${esc(ci.url)}" alt="${esc(ci.course)} class at RGLM" loading="lazy">`;if(pill)box.append(pill);
-    });
   }catch(e){}
 })();
 document.querySelectorAll('.g-tabs .chip').forEach(ch=>ch.onclick=()=>{
