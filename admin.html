@@ -698,7 +698,7 @@ function renderMedia(){
       <div class="segs" style="padding:18px 0 0"><button class="seg ${galKind==='photo'?'on':''}" data-k="photo">Photos<span>${nP}</span></button><button class="seg ${galKind==='video'?'on':''}" data-k="video">Videos<span>${nV}</span></button></div>
       ${list.length?`<div class="mgrid">${list.map((g,i)=>`
         <div class="mcard" data-gid="${g.id}">
-          <div class="mthumb">${g.kind==='video'?`<video src="${esc(absUrl(g.url))}"${g.poster?` poster="${esc(absUrl(g.poster))}"`:''} preload="metadata" muted playsinline controls></video>`:`<img src="${esc(absUrl(g.url))}" alt="" loading="lazy">`}<span class="tag">#${i+1}</span></div>
+          <div class="mthumb">${g.kind==='video'?`<video src="${esc(absUrl(g.url))}"${g.poster?` poster="${esc(absUrl(g.poster))}"`:''} preload="metadata" playsinline controls></video>`:`<img src="${esc(absUrl(g.url))}" alt="" loading="lazy">`}<span class="tag">#${i+1}</span></div>
           <div class="mbody">
             <input data-cap="${g.id}" value="${esc(g.caption||'')}" placeholder="Add a caption…" maxlength="160">
             <div class="mrow">
