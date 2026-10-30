@@ -6,3 +6,4 @@ dist/
 # Raw source images (cropped versions live in assets/img)
 src/
 assets/letterhead.png
+.vercel

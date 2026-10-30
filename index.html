@@ -903,7 +903,7 @@ const waI='<svg viewBox="0 0 32 32" fill="currentColor"><path d="M16.04 3C9.4 3 
 const okI='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>';
 $('grid').innerHTML=C.map(p=>`
  <div class="card">
-  <div class="card-img">${p.img?`<img src="${p.img}" alt="${esc(p.n)} class at RGLM" loading="lazy">`:p.art}<span class="pill">${p.pill}</span></div>
+  <div class="card-img" data-course="${esc(p.n)}">${p.img?`<img src="${p.img}" alt="${esc(p.n)} class at RGLM" loading="lazy">`:p.art}<span class="pill">${p.pill}</span></div>
   <a href="#enrol" class="card-h" data-p="${esc(p.n)}"><h3>${esc(p.n)}</h3>${chev}</a>
   <div class="card-b">
    <div class="incl"><em>${esc(p.k)}</em>: Includes ${esc(p.i)}</div>
@@ -975,21 +975,47 @@ $('cForm').addEventListener('submit',e=>{
   $('cOk').style.display='block';e.target.reset();
 });
 
-/* ---------- Gallery ---------- */
-const G=[
+/* ---------- Gallery (managed from the admin panel; built-in list is the fallback) ---------- */
+let G=[
  ['calli-class-1','Calligraphy class in progress'],['computer-lab','RGLM computer lab'],['tailoring-class','Cutting & tailoring class'],
  ['calli-class-2','Calligraphy & painting practice'],['tally-lab','Tally & accounting lab'],['calli-poster','Urdu calligraphy course – admissions open'],
  ['tailoring-poster','Cutting & Tailoring course'],['urdu-calli','Urdu Calligraphy – Session 2026'],['calli-courses','Calligraphy course levels'],
  ['computer-banner','Computer courses – basic to advanced'],['tally-poster','Learn Tally with GST'],
-];
-$('gPhotos').innerHTML=G.map(([f,c],i)=>`<figure data-i="${i}"><img src="assets/img/${f}.jpg" alt="${esc(c)}" loading="lazy"><figcaption>${esc(c)}</figcaption></figure>`).join('');
+].map(([f,c])=>({url:`assets/img/${f}.jpg`,caption:c}));
+function renderPhotos(){
+  $('gPhotos').innerHTML=G.map((g,i)=>`<figure data-i="${i}"><img src="${esc(g.url)}" alt="${esc(g.caption||'Gallery photo')}" loading="lazy">${g.caption?`<figcaption>${esc(g.caption)}</figcaption>`:''}</figure>`).join('');
+}
+function renderVideos(list){
+  if(!list.length){$('gVideos').innerHTML='<p class="s-sub">Videos coming soon.</p>';return}
+  $('gVideos').innerHTML=list.map((v,i)=>`<div class="vwrap${i===0&&list.length>1?' big':''}"><div class="vid"><video src="${esc(v.url)}"${v.poster?` poster="${esc(v.poster)}"`:''} controls preload="none" playsinline></video></div>${v.caption?`<div class="vid-cap">${esc(v.caption)}</div>`:''}</div>`).join('');
+}
+renderPhotos();
+(async()=>{
+  try{
+    const c=await getCfg();if(!c.url||!c.anonKey)return;
+    const h={apikey:c.anonKey,Authorization:`Bearer ${c.anonKey}`};
+    const [gal,crs]=await Promise.all([
+      fetch(`${c.url}/rest/v1/ldrf_gallery?select=kind,url,poster,caption&order=sort.asc,created_at.asc`,{headers:h}).then(r=>r.ok?r.json():null),
+      fetch(`${c.url}/rest/v1/ldrf_course_images?select=course,url`,{headers:h}).then(r=>r.ok?r.json():null)
+    ]);
+    if(gal){
+      G=gal.filter(x=>x.kind==='photo');renderPhotos();
+      renderVideos(gal.filter(x=>x.kind==='video'));
+    }
+    (crs||[]).forEach(ci=>{
+      const box=document.querySelector(`.card-img[data-course="${CSS.escape(ci.course)}"]`);if(!box)return;
+      const pill=box.querySelector('.pill');
+      box.innerHTML=`<img src="${esc(ci.url)}" alt="${esc(ci.course)} class at RGLM" loading="lazy">`;if(pill)box.append(pill);
+    });
+  }catch(e){}
+})();
 document.querySelectorAll('.g-tabs .chip').forEach(ch=>ch.onclick=()=>{
   document.querySelectorAll('.g-tabs .chip').forEach(x=>x.classList.toggle('on',x===ch));
   $('gPhotos').classList.toggle('hide',ch.dataset.g!=='photos');$('gVideos').classList.toggle('hide',ch.dataset.g!=='videos');
   if(ch.dataset.g!=='videos')document.querySelectorAll('#gVideos video').forEach(v=>v.pause());
 });
 let li=0;const lb=$('lb');
-function show(i){li=(i+G.length)%G.length;lb.querySelector('img').src=`assets/img/${G[li][0]}.jpg`;lb.querySelector('p').textContent=G[li][1];lb.classList.add('on')}
+function show(i){if(!G.length)return;li=(i+G.length)%G.length;lb.querySelector('img').src=G[li].url;lb.querySelector('p').textContent=G[li].caption||'';lb.classList.add('on')}
 $('gPhotos').addEventListener('click',e=>{const f=e.target.closest('figure');if(f)show(+f.dataset.i)});
 lb.querySelector('.x').onclick=()=>lb.classList.remove('on');
 lb.querySelector('.pv').onclick=()=>show(li-1);lb.querySelector('.nx').onclick=()=>show(li+1);

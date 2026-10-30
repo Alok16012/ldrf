@@ -107,7 +107,37 @@ select.status{height:34px;border-radius:20px;border:1px solid transparent;paddin
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;opacity:0;transition:.25s;z-index:50;border:1px solid rgba(216,184,113,.4)}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
+/* ---------- Media manager ---------- */
+#media{padding:18px}
+.up{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--cream);border:1px dashed #e2d3ac;border-radius:14px;padding:14px}
+.up label.pick{height:42px;padding:0 16px;border-radius:10px;background:var(--navy-grad);color:#fff;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.up label.pick svg{width:18px;height:18px}
+.up input[type=file]{display:none}
+.up input[type=text]{flex:1;min-width:180px;height:42px;border:1px solid #e7dfcc;border-radius:10px;padding:0 12px;background:#fff;outline:none}
+.up .picked{font-size:13px;color:var(--muted);width:100%}
+.up .hint{font-size:12px;color:var(--muted);width:100%}
+.sub-tabs{display:flex;gap:8px;margin:18px 0 14px}
+.sub-tabs button{height:34px;padding:0 14px;border-radius:20px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:600;color:var(--muted)}
+.sub-tabs button.on{background:var(--ink);border-color:var(--ink);color:var(--champ-2)}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.mcard{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.mthumb{aspect-ratio:4/3;background:#0b1733;position:relative}
+.mthumb img,.mthumb video{width:100%;height:100%;object-fit:cover;display:block}
+.mthumb .badge{position:absolute;left:8px;top:8px;background:rgba(11,23,51,.85);color:var(--champ-2);font-size:11px;font-weight:700;padding:3px 8px;border-radius:12px}
+.mbody{padding:10px;display:flex;flex-direction:column;gap:8px}
+.mbody input{height:36px;border:1px dashed #e2d8bf;border-radius:8px;padding:0 10px;font-size:13px;background:transparent;outline:none}
+.mbody input:focus{border-style:solid;border-color:var(--champ);background:#fffdf8}
+.mrow{display:flex;gap:6px;justify-content:space-between}
+.mrow .ic{width:38px}
+.crs-card .mbody b{font-size:15px;color:var(--ink)}
+.crs-card .mbody small{font-size:12px;color:var(--muted)}
+.btn-line{height:38px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:600;color:var(--ink);flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}
+.btn-line.gold{background:var(--gold-grad);border:none}
+.btn-line input{display:none}
+.busy{opacity:.55;pointer-events:none}
+
 @media (max-width:900px){
+  .tabs{flex-wrap:wrap}
   .stats{grid-template-columns:repeat(2,1fr)}
   .filters{margin-left:0;width:100%}
   .filters input{flex:1;width:auto}
@@ -121,7 +151,7 @@ select.status{height:34px;border-radius:20px;border:1px solid transparent;paddin
 }
 @media (max-width:520px){
   .btn-o span{display:none}
-  .tabs{width:100%}.tab{flex:1}
+  .tabs{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:4px}.tab{width:100%}
   .st b{font-size:24px}
 }
 </style>
@@ -171,6 +201,8 @@ select.status{height:34px;border-radius:20px;border:1px solid transparent;paddin
         <div class="tabs">
           <button class="tab on" data-t="enr">Enrollments<em id="cEnr">0</em></button>
           <button class="tab" data-t="con">Contacts<em id="cCon">0</em></button>
+          <button class="tab" data-t="gal">Gallery<em id="cGal">0</em></button>
+          <button class="tab" data-t="crs">Course Photos</button>
         </div>
         <div class="filters">
           <input id="q" type="search" placeholder="Search name, mobile, place…">
@@ -180,6 +212,7 @@ select.status{height:34px;border-radius:20px;border:1px solid transparent;paddin
         </div>
       </div>
       <div id="list"><div class="loading">Loading…</div></div>
+      <div id="media" class="hide"></div>
     </div>
   </main>
 </div>
@@ -251,7 +284,7 @@ async function enter(user){
 }
 
 $('bOut').onclick=async()=>{await sb.auth.signOut();location.reload()};
-$('bRefresh').onclick=()=>load(true);
+$('bRefresh').onclick=()=>(tab==='gal'||tab==='crs')?loadMedia().then(()=>toast('Media refreshed')):load(true);
 
 async function load(msg){
   $('list').innerHTML='<div class="loading">Loading…</div>';
@@ -262,6 +295,7 @@ async function load(msg){
   if(a.error||b.error){$('list').innerHTML=`<div class="empty"><b>Could not load data</b>${esc((a.error||b.error).message)}</div>`;return}
   data.enr=a.data;data.con=b.data;
   stats();filters();render();
+  sb.from('ldrf_gallery').select('id',{count:'exact',head:true}).then(r=>{if(!r.error)$('cGal').textContent=r.count});
   if(msg)toast('Data refreshed');
 }
 
@@ -313,6 +347,10 @@ function render(){
 
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
   tab=b.dataset.t;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));
+  const isMedia=tab==='gal'||tab==='crs';
+  document.querySelector('.filters').classList.toggle('hide',isMedia);
+  $('list').classList.toggle('hide',isMedia);$('media').classList.toggle('hide',!isMedia);
+  if(isMedia){$('media').innerHTML='<div class="loading">Loading…</div>';loadMedia();return}
   $('q').value='';$('fStatus').value='';$('fProg').value='';filters();render();
 });
 ['q','fStatus','fProg'].forEach(id=>$(id).addEventListener('input',render));
@@ -349,6 +387,175 @@ $('bCsv').onclick=()=>{
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv'}));
   a.download=`ldrf-${tab==='enr'?'enrollments':'contacts'}-${new Date().toISOString().slice(0,10)}.csv`;a.click();
 };
+
+/* ================= MEDIA MANAGER (Gallery + Course Photos) ================= */
+const BUCKET='ldrf-media';
+const COURSES=[
+  ['Calligraphy & Graphic Design','assets/img/calli-class-2.jpg'],
+  ['Mehndi Designing',''],
+  ['Cutting & Tailoring','assets/img/tailoring-class.jpg'],
+  ['Computer Training','assets/img/computer-lab.jpg'],
+  ['Tally Financial Accounting','assets/img/tally-lab.jpg'],
+];
+let gal=[],crs=[],galKind='photo';
+const U={
+  up:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>',
+  l:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg>',
+  r:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m9 18 6-6-6-6"/></svg>'
+};
+const absUrl=u=>/^https?:/.test(u)?u:'/'+u.replace(/^\//,'');
+
+async function loadMedia(){
+  const [a,b]=await Promise.all([
+    sb.from('ldrf_gallery').select('*').order('sort',{ascending:true}).order('created_at',{ascending:true}),
+    sb.from('ldrf_course_images').select('*')
+  ]);
+  if(a.error||b.error){$('media').innerHTML=`<div class="empty"><b>Could not load media</b>${esc((a.error||b.error).message)}</div>`;return}
+  gal=a.data;crs=b.data;$('cGal').textContent=gal.length;
+  renderMedia();
+}
+
+// Shrink photos before upload so the website stays fast
+function shrink(file,max=1600){
+  return new Promise(res=>{
+    if(!file.type.startsWith('image/')){res(file);return}
+    const img=new Image();img.onload=()=>{
+      const k=Math.min(1,max/Math.max(img.width,img.height));
+      const c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      c.toBlob(b=>res(b||file),'image/jpeg',.85);URL.revokeObjectURL(img.src);
+    };img.onerror=()=>res(file);img.src=URL.createObjectURL(file);
+  });
+}
+async function uploadFile(file,folder){
+  const isVid=file.type.startsWith('video/');
+  if(isVid&&file.size>50*1024*1024)throw new Error(`${file.name} is larger than 50 MB`);
+  const body=isVid?file:await shrink(file);
+  const ext=isVid?(file.type==='video/webm'?'webm':'mp4'):'jpg';
+  const path=`${folder}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+  const {error}=await sb.storage.from(BUCKET).upload(path,body,{contentType:isVid?file.type:'image/jpeg',cacheControl:'31536000'});
+  if(error)throw error;
+  return {path,url:sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl,kind:isVid?'video':'photo'};
+}
+const removeObj=async path=>{if(path)await sb.storage.from(BUCKET).remove([path])};
+
+function renderMedia(){
+  if(tab==='gal'){
+    const list=gal.filter(g=>g.kind===galKind);
+    $('media').innerHTML=`
+      <div class="up">
+        <label class="pick">${U.up}Choose photos / videos<input type="file" id="gFile" multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"></label>
+        <input type="text" id="gCap" maxlength="160" placeholder="Caption (optional, applies to all selected)">
+        <button class="btn-s gold" id="gUp">${U.up}Upload</button>
+        <div class="picked" id="gPicked">No file selected</div>
+        <div class="hint">Photos: JPG / PNG / WEBP (auto-resized). Videos: MP4 / WEBM up to 50 MB. New items appear at the end of the website gallery.</div>
+      </div>
+      <div class="sub-tabs"><button data-k="photo" class="${galKind==='photo'?'on':''}">Photos (${gal.filter(g=>g.kind==='photo').length})</button><button data-k="video" class="${galKind==='video'?'on':''}">Videos (${gal.filter(g=>g.kind==='video').length})</button></div>
+      ${list.length?`<div class="mgrid">${list.map((g,i)=>`
+        <div class="mcard" data-gid="${g.id}">
+          <div class="mthumb">${g.kind==='video'?`<video src="${esc(absUrl(g.url))}"${g.poster?` poster="${esc(absUrl(g.poster))}"`:''} preload="metadata" muted playsinline controls></video>`:`<img src="${esc(absUrl(g.url))}" alt="" loading="lazy">`}<span class="badge">#${i+1}</span></div>
+          <div class="mbody">
+            <input data-cap="${g.id}" value="${esc(g.caption||'')}" placeholder="Add caption…" maxlength="160">
+            <div class="mrow">
+              <button class="ic" data-mv="-1" title="Move earlier" ${i===0?'disabled':''}>${U.l}</button>
+              <button class="ic" data-mv="1" title="Move later" ${i===list.length-1?'disabled':''}>${U.r}</button>
+              <button class="ic del" data-gdel="${g.id}" title="Delete">${I.del}</button>
+            </div>
+          </div>
+        </div>`).join('')}</div>`:`<div class="empty"><b>No ${galKind==='photo'?'photos':'videos'} yet</b>Upload using the box above.</div>`}`;
+    return;
+  }
+  // Course photos
+  $('media').innerHTML=`<p class="hint" style="font-size:13px;color:var(--muted);margin-bottom:14px">Change the photo shown on each course card on the website.</p>
+    <div class="mgrid">${COURSES.map(([name,def])=>{
+      const o=crs.find(c=>c.course===name),src=o?o.url:def;
+      return `<div class="mcard crs-card" data-course="${esc(name)}">
+        <div class="mthumb">${src?`<img src="${esc(absUrl(src))}" alt="">`:`<div style="height:100%;display:grid;place-items:center;color:var(--champ-2);font-family:var(--serif);font-size:22px">${esc(name)}</div>`}${o?'<span class="badge">Custom</span>':''}</div>
+        <div class="mbody"><b>${esc(name)}</b><small>${o?'Custom photo':'Default photo'}</small>
+          <div class="mrow">
+            <label class="btn-line gold">${U.up}Change<input type="file" data-cfile="${esc(name)}" accept="image/jpeg,image/png,image/webp"></label>
+            ${o?`<button class="btn-line" data-creset="${esc(name)}">Reset</button>`:''}
+          </div>
+        </div></div>`}).join('')}</div>`;
+}
+
+$('media').addEventListener('change',async e=>{
+  if(e.target.id==='gFile'){
+    const n=e.target.files.length;$('gPicked').textContent=n?[...e.target.files].map(f=>f.name).join(', '):'No file selected';return;
+  }
+  const cf=e.target.closest('[data-cfile]');
+  if(cf&&cf.files[0]){
+    const name=cf.dataset.cfile,card=cf.closest('.mcard');card.classList.add('busy');
+    try{
+      const up=await uploadFile(cf.files[0],'courses');
+      const old=crs.find(c=>c.course===name);
+      const {error}=await sb.from('ldrf_course_images').upsert({course:name,url:up.url,path:up.path,updated_at:new Date().toISOString()});
+      if(error){await removeObj(up.path);throw error}
+      if(old)await removeObj(old.path);
+      toast('Course photo updated');await loadMedia();
+    }catch(err){toast('Upload failed: '+err.message);card.classList.remove('busy')}
+  }
+});
+
+$('media').addEventListener('click',async e=>{
+  const sub=e.target.closest('.sub-tabs button');if(sub){galKind=sub.dataset.k;renderMedia();return}
+
+  if(e.target.closest('#gUp')){
+    const files=[...($('gFile').files||[])];if(!files.length){toast('Choose a photo or video first');return}
+    const btn=$('gUp');btn.classList.add('busy');
+    const cap=$('gCap').value.trim()||null;let ok=0;
+    for(const [i,f] of files.entries()){
+      btn.textContent=`Uploading ${i+1}/${files.length}…`;
+      try{
+        const up=await uploadFile(f,'gallery');
+        const max=Math.max(0,...gal.filter(g=>g.kind===up.kind).map(g=>g.sort));
+        const {data:row,error}=await sb.from('ldrf_gallery').insert({kind:up.kind,url:up.url,path:up.path,caption:cap,sort:max+10}).select().single();
+        if(error){await removeObj(up.path);throw error}
+        gal.push(row);ok++;
+      }catch(err){toast(`${f.name}: ${err.message}`)}
+    }
+    if(ok){galKind=files[files.length-1].type.startsWith('video/')?'video':'photo';toast(`${ok} file${ok>1?'s':''} uploaded`)}
+    await loadMedia();return;
+  }
+
+  const del=e.target.closest('[data-gdel]');
+  if(del){
+    const g=gal.find(x=>x.id===+del.dataset.gdel);
+    if(!confirm('Delete this item from the website gallery?'))return;
+    const {error}=await sb.from('ldrf_gallery').delete().eq('id',g.id);
+    if(error){toast('Delete failed: '+error.message);return}
+    await removeObj(g.path);toast('Deleted');await loadMedia();return;
+  }
+
+  const mv=e.target.closest('[data-mv]');
+  if(mv){
+    const list=gal.filter(g=>g.kind===galKind),id=+mv.closest('.mcard').dataset.gid;
+    const i=list.findIndex(g=>g.id===id),j=i+(+mv.dataset.mv);if(j<0||j>=list.length)return;
+    // renumber this kind so every item has a distinct sort, then swap the two
+    list.forEach((g,k)=>g.sort=(k+1)*10);[list[i].sort,list[j].sort]=[list[j].sort,list[i].sort];
+    const res=await Promise.all(list.map(g=>sb.from('ldrf_gallery').update({sort:g.sort}).eq('id',g.id)));
+    const bad=res.find(r=>r.error);if(bad){toast('Reorder failed: '+bad.error.message)}
+    await loadMedia();return;
+  }
+
+  const rs=e.target.closest('[data-creset]');
+  if(rs){
+    const o=crs.find(c=>c.course===rs.dataset.creset);if(!o)return;
+    if(!confirm('Reset this course to its default photo?'))return;
+    const {error}=await sb.from('ldrf_course_images').delete().eq('course',o.course);
+    if(error){toast('Reset failed: '+error.message);return}
+    await removeObj(o.path);toast('Reset to default');await loadMedia();
+  }
+});
+
+$('media').addEventListener('focusout',async e=>{
+  const c=e.target.closest('[data-cap]');if(!c)return;
+  const g=gal.find(x=>x.id===+c.dataset.cap),val=c.value.trim()||null;
+  if((g.caption||null)===val)return;
+  const {error}=await sb.from('ldrf_gallery').update({caption:val}).eq('id',g.id);
+  if(error){toast('Caption not saved: '+error.message);return}
+  g.caption=val;toast('Caption saved');
+});
 
 init();
 </script>
